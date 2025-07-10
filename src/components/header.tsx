@@ -4,6 +4,7 @@ import { usePomodoro } from "@/hooks/use-pomodoro";
 
 import { LanguageSelector } from "./language-selector";
 import { PomodoroTimerRemind } from "./pomodoro-timer-remind";
+import { ToggleTheme } from "./toggle-theme";
 
 const Header = () => {
   const matches = useMatches();
@@ -28,6 +29,7 @@ const Header = () => {
             <PomodoroTimerRemind />
           </button>
         )}
+        <ToggleTheme />
         <LanguageSelector />
       </div>
     </div>

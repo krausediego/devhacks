@@ -37,7 +37,7 @@ const HomePage = () => {
   const logout = async () => {
     await supabase.auth.signOut();
 
-    navigate("/");
+    navigate("/login");
   };
 
   return (

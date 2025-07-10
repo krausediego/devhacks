@@ -3,10 +3,8 @@ import {
   DndContext,
   type DragEndEvent,
   type DragOverEvent,
-  type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
-  type UniqueIdentifier,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -19,35 +17,42 @@ import * as React from "react";
 
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
-import { KanbanColumn } from "./kanban-column";
+import { type CardFormProps, KanbanColumn } from "./kanban-column";
 import { coordinateGetter } from "./multipleContainersKeyboardPreset";
 
 export interface KanbanCardProps {
   id: string;
   title: string;
+  createBy: string;
+  createdAt: Date;
+  tags: string[];
   description?: string;
 }
 
 export interface KanbanColumnProps {
   id: string;
   title: string;
+  color: string;
   cards: KanbanCardProps[];
 }
 
 const initialColumns: KanbanColumnProps[] = [
   {
     id: "todo",
-    title: "To Do",
+    title: "Not started",
+    color: "145, 145, 142",
     cards: [],
   },
   {
     id: "inprogress",
-    title: "In Progress",
+    title: "In Development",
+    color: "91, 152, 190",
     cards: [],
   },
   {
     id: "done",
     title: "Done",
+    color: "108, 155, 125",
     cards: [],
   },
 ];
@@ -57,21 +62,6 @@ const KanbanBoard = () => {
     "kanban-board",
     initialColumns,
   );
-  const [activeId, setActiveId] = React.useState<UniqueIdentifier | null>(null);
-  const [isClient, setIsClient] = React.useState(false);
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    setActiveId(active.id);
-  };
-
-  React.useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  React.useEffect(() => {
-    console.log("chamou aqui");
-  }, [columns, isClient]);
 
   const findContainerOfCard = (cardId: string): string | undefined => {
     for (const column of columns) {
@@ -115,7 +105,6 @@ const KanbanBoard = () => {
       const [movedCard] = newColumns[sourceIndex].cards.splice(cardIndex, 1);
       newColumns[destinationIndex].cards.push(movedCard);
 
-      console.log("AQUI", newColumns);
       setColumns(newColumns);
     },
     [columns, setColumns],
@@ -163,7 +152,6 @@ const KanbanBoard = () => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    setActiveId(null);
 
     if (!over) return;
     if (active.id === over.id) return;
@@ -217,7 +205,11 @@ const KanbanBoard = () => {
   );
 
   const addCard = React.useCallback(
-    (columnId: string, title: string, description?: string) => {
+    ({
+      columnId,
+      title,
+      description,
+    }: CardFormProps & { columnId: string }) => {
       setColumns((prev) => {
         return prev.map((col) => {
           return col.id === columnId
@@ -228,6 +220,9 @@ const KanbanBoard = () => {
                   {
                     id: Date.now().toString(),
                     title,
+                    createBy: "Diego krause",
+                    createdAt: new Date(),
+                    tags: ["Design"],
                     description,
                   },
                 ],
@@ -239,11 +234,20 @@ const KanbanBoard = () => {
     [setColumns],
   );
 
+  const deleteCardFromColumn = (columnId: string, cardId: string) => {
+    setColumns((prev) =>
+      prev.map((col) =>
+        col.id === columnId
+          ? { ...col, cards: col.cards.filter((card) => card.id !== cardId) }
+          : col,
+      ),
+    );
+  };
+
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
@@ -258,7 +262,7 @@ const KanbanBoard = () => {
                 key={column.id}
                 column={column}
                 addCard={addCard}
-                deleteCard={() => {}}
+                deleteCard={deleteCardFromColumn}
               />
             );
           })}

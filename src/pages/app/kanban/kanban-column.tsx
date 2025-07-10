@@ -1,57 +1,86 @@
 import { useDroppable } from "@dnd-kit/core";
 import { rectSortingStrategy, SortableContext } from "@dnd-kit/sortable";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
 import * as React from "react";
+import { FormProvider, type SubmitHandler, useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Form } from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 import type { KanbanColumnProps } from "./kanban-board";
 import { KanbanCard } from "./kanban-card";
+import { KanbanCardForm } from "./kanban-card-form";
 
 interface BoardColumnProps {
   column: KanbanColumnProps;
-  addCard: (columnId: string, title: string, description?: string) => void;
+  addCard: (props: CardFormProps & { columnId: string }) => void;
   deleteCard: (columnId: string, cardId: string) => void;
 }
 
+const schema = z.object({
+  title: z.string(),
+  description: z.string(),
+  // tags: z.array(z.string()),
+});
+
+export type CardFormProps = z.infer<typeof schema>;
+
 const KanbanColumn = React.memo(
   ({ column, addCard, deleteCard }: BoardColumnProps) => {
+    const form = useForm<CardFormProps>({ resolver: zodResolver(schema) });
+
     const { setNodeRef } = useDroppable({ id: column.id });
     const [dialogOpen, setDialogOpen] = React.useState(false);
 
-    const handleAdd = (e: React.FormEvent) => {
-      e.preventDefault();
-      addCard(column.id, "kakaka", "akakaka");
+    const backgroundColor = `rgba(${column.color}, 0.05)`;
+
+    const handleAdd: SubmitHandler<CardFormProps> = (values) => {
+      addCard({ columnId: column.id, ...values });
       setDialogOpen(false);
     };
 
     return (
-      <div
-        ref={setNodeRef}
-        className={cn(
-          "bg-background/80 flex flex-1 flex-col gap-3 rounded-2xl p-4",
-          "border-border/40 border shadow-lg backdrop-blur-sm",
-        )}
-      >
-        <div className="border-border/40 mb-1 flex items-center justify-between border-b pb-2">
-          <h2 className="text-foreground truncate text-lg font-semibold tracking-tight">
-            {column.title}
-            <span className="text-muted-foreground ml-2 text-sm">
-              ({column.cards.length})
+      <div className="flex flex-1 flex-col gap-3">
+        <div
+          className="flex items-center justify-between rounded-md px-2 py-1"
+          style={{ backgroundColor }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center gap-2 rounded-full px-3"
+              style={{ backgroundColor: `rgba(${column.color}, 0.2)` }}
+            >
+              <div
+                className="size-2 rounded-full"
+                style={{ backgroundColor: `rgb(${column.color})` }}
+              />
+              <h2 className="text-foreground truncate font-semibold tracking-tight">
+                {column.title}
+              </h2>
+            </div>
+            <span className="" style={{ color: `rgba(${column.color}, 0.5` }}>
+              {column.cards.length}
             </span>
-          </h2>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          </div>
+          <Dialog
+            open={dialogOpen}
+            onOpenChange={(open) => {
+              setDialogOpen(open);
+              form.reset();
+            }}
+          >
             <DialogTrigger asChild>
               <Button
                 size="icon"
@@ -61,49 +90,48 @@ const KanbanColumn = React.memo(
                 <Plus className="h-5 w-5" />
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="min-w-4xl">
               <DialogHeader>
                 <DialogTitle>Add New Task</DialogTitle>
                 <DialogDescription>
                   Create a new task in the {column.title} column.
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleAdd} className="mt-2 flex flex-col gap-4">
-                <div className="space-y-2">
-                  {/* <Input
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Task title..."
-                    autoFocus
-                    aria-label="Task title"
-                  />
-                  <Input
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    placeholder="Description (optional)..."
-                    aria-label="Task description"
-                  /> */}
-                </div>
-                <DialogFooter>
-                  <Button type="submit">Add Task</Button>
-                </DialogFooter>
-              </form>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(handleAdd)}
+                  className="mt-2 flex flex-col gap-4"
+                >
+                  <FormProvider {...form}>
+                    <KanbanCardForm />
+                  </FormProvider>
+                </form>
+              </Form>
             </DialogContent>
           </Dialog>
         </div>
-        <ScrollArea className="max-h-[60vh] min-h-[120px] flex-1">
-          <SortableContext
-            items={column.cards.map((card) => card.id)}
-            strategy={rectSortingStrategy}
-          >
-            <div className="flex flex-col gap-3 pr-2">
-              {column.cards.map((card) => (
-                <KanbanCard key={card.id} card={card} onDelete={() => {}} />
-              ))}
-            </div>
-          </SortableContext>
-        </ScrollArea>
+        <div
+          ref={setNodeRef}
+          className={cn("flex flex-1 flex-col gap-3 rounded-md p-1")}
+          style={{ backgroundColor }}
+        >
+          <ScrollArea className="max-h-[60vh] min-h-[120px] flex-1">
+            <SortableContext
+              items={column.cards.map((card) => card.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="flex flex-col gap-3">
+                {column.cards.map((card) => (
+                  <KanbanCard
+                    key={card.id}
+                    card={card}
+                    onDelete={() => deleteCard(column.id, card.id)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </ScrollArea>
+        </div>
       </div>
     );
   },
