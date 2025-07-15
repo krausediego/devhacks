@@ -13,9 +13,12 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useMutation } from "@tanstack/react-query";
 import * as React from "react";
 
+import { Button } from "@/components/ui/button";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { createKanbanBoard } from "@/services";
 
 import { type CardFormProps, KanbanColumn } from "./kanban-column";
 import { coordinateGetter } from "./multipleContainersKeyboardPreset";
@@ -62,6 +65,14 @@ const KanbanBoard = () => {
     "kanban-board",
     initialColumns,
   );
+
+  const { mutateAsync: createBoard } = useMutation({
+    mutationFn: createKanbanBoard,
+  });
+
+  const handleCreateBoard = async () => {
+    await createBoard();
+  };
 
   const findContainerOfCard = (cardId: string): string | undefined => {
     for (const column of columns) {
@@ -251,6 +262,7 @@ const KanbanBoard = () => {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
+      <Button onClick={handleCreateBoard}>Criar</Button>
       <div className="box-border flex flex-1 gap-6 overflow-x-auto p-6 pb-8">
         <SortableContext
           items={columns.map((col) => col.id)}
